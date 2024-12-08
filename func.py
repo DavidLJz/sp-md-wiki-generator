@@ -26,6 +26,12 @@ class Tag(msgspec.Struct, frozen=True, kw_only=True):
     updated_at: datetime|None = None
     deleted_at: datetime|None = None
 
+    @property
+    def md_link(self):
+        hyperlink = self.description.lower().replace(' ', '-')
+
+        return f"[{self.description}](#{hyperlink})"
+
 
 class Paragraph(msgspec.Struct, frozen=True, kw_only=True):
     id: int
@@ -38,6 +44,12 @@ class Paragraph(msgspec.Struct, frozen=True, kw_only=True):
     created_at: datetime|None = None
     updated_at: datetime|None = None
     deleted_at: datetime|None = None
+
+    @property
+    def md_link(self):
+        hyperlink = self.title.lower().replace(' ', '-')
+
+        return f"[{self.title}](#{hyperlink})"
 
 # endregion
 
@@ -125,8 +137,9 @@ def add_paragraph(connection: sqlite3.Connection,
     return paragraph_id
 
 
-def get_paragraphs(connection: sqlite3.Connection,
-                   paragraph_id: int = None,
+def get_paragraphs( connection: sqlite3.Connection,
+                    paragraph_id: int = None,
+                    collection_id: int = None,
                    ) -> List[Paragraph]:
     cursor = connection.cursor()
 
@@ -141,6 +154,10 @@ def get_paragraphs(connection: sqlite3.Connection,
     if paragraph_id:
         sql += ' AND id = ?'
         values.append(paragraph_id)
+
+    if collection_id:
+        sql += ' AND collection_id = ?'
+        values.append(collection_id)
 
     rows = cursor.execute(sql, values).fetchall()
 
@@ -230,42 +247,29 @@ def get_collections(connection: sqlite3.Connection) -> List[Collection]:
 
 # endregion
 
-def generate_markdown(connection: sqlite3.Connection, collection_id: int = None):
-    cursor = connection.cursor()
+def generate_markdown(connection: sqlite3.Connection, collection_id: int):
+    paragraphs = get_paragraphs(connection, collection_id= collection_id)
 
-    # Fetch all data
-    collections = cursor.execute("SELECT * FROM collections").fetchall()
-    paragraphs = cursor.execute("""
-        SELECT p.id, p.title, p.content, c.name AS collection_name, 
-               GROUP_CONCAT(t.name, ', ') AS tags
-        FROM paragraphs p
-        LEFT JOIN collections c ON p.collection_id = c.id
-        LEFT JOIN paragraph_tags pt ON p.id = pt.paragraph_id
-        LEFT JOIN tags t ON t.id = pt.tag_id
-        WHERE p.deleted_at IS NULL
-        GROUP BY p.id
-    """).fetchall()
+    tags = set(t for p in paragraphs for t in p.tags)
 
-    # Template
-    markdown_template = """
-    # Paragraphs Collection
+    # Topics Index
+    markdown_template = (
+        "# 1. Topics Index\n\n"
+        "{% for tag in tags %}\n"
+            "## {{ tag.description }}\n"
+            "{% for paragraph in paragraphs if tag in paragraph.tags %}\n"
+            "- {{ paragraph.md_link }}\n"
+            "{% endfor %}\n"
+        "{% endfor %}\n\n"
+        "# 2. Topics\n\n"
+        "{% for paragraph in paragraphs %}\n"
+            "{{ paragraph.content }}\n\n"
+            "**Tags**: {% for tag in paragraph.tags %}{{ tag.md_link }}{% if not loop.last %}, {% endif %}{% endfor %}\n"
+        "{% endfor %}\n"
+        )
 
-    {% for collection in collections %}
-    ## {{ collection['name'] }}
-
-    {% for paragraph in paragraphs if paragraph['collection_name'] == collection['name'] %}
-    ### {{ paragraph['title'] }}
-    {{ paragraph['content'] }}
-
-    **Tags:** {{ paragraph['tags'] }}
-
-    ---
-    {% endfor %}
-    {% endfor %}
-    """
     template = Template(markdown_template)
-    markdown = template.render(collections=collections, paragraphs=paragraphs)
+    
+    markdown = template.render(paragraphs=paragraphs, tags=tags)
 
-    # Write to file
-    with open("output.md", "w") as f:
-        f.write(markdown)
+    return markdown

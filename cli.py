@@ -174,10 +174,11 @@ try:
 
 
     @app.command()
-    def generate():
+    def generate(collection_id: int):
         """Generate Markdown file."""
-        generate_markdown(connection= conn)
+        markdown = generate_markdown(connection= conn, collection_id= collection_id)
 
+        typer.echo(markdown)
 
     @app.command()
     def init():
