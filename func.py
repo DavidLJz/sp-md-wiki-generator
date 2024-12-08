@@ -193,6 +193,18 @@ def update_paragraph(connection: sqlite3.Connection,
     connection.commit()
 
 
+def delete_paragraph(connection: sqlite3.Connection, paragraph_id: int):
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        UPDATE paragraphs
+        SET deleted_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+    """, (paragraph_id,))
+
+    connection.commit()
+
+
 def get_paragraphs( connection: sqlite3.Connection,
                     paragraph_id: int = None,
                     collection_id: int = None,

@@ -14,6 +14,7 @@ from func import (
     add_paragraph as db_add_paragraph,
     get_paragraphs as db_get_paragraphs,
     update_paragraph as db_update_paragraph,
+    delete_paragraph as db_delete_paragraph,
     open_content_text_editor
     )
 
@@ -232,6 +233,22 @@ try:
             )
 
         typer.echo("Document modified successfully")
+
+
+    @app.command()
+    def delete_paragraph(id: int):
+        """Delete a paragraph."""
+        paragraphs = db_get_paragraphs(connection= conn, paragraph_id= id)
+
+        if not paragraphs:
+            typer.echo("Paragraph not found")
+            raise typer.Abort()
+
+        paragraph = paragraphs[0]
+
+        db_delete_paragraph(connection= conn, paragraph_id= paragraph.id)
+
+        typer.echo("Document deleted successfully")
 
 
     @app.command()
