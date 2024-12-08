@@ -10,6 +10,15 @@ import subprocess
 
 # region Dataclass
 
+def get_markdown_hyperlink(text: str) -> str:
+    hyperlink = text.strip().lower().replace(' ', '-')
+
+    # Allow only markdown characters in hyperlink
+    hyperlink = ''.join(c for c in hyperlink if c.isalnum() or c in ['-', '_'])
+
+    return f"[{text}](#{hyperlink})"
+
+
 def dict_to_struct(data: dict, struct_type: type) -> msgspec.Struct:
     return struct_type(**data)
 
@@ -37,9 +46,7 @@ class Tag(msgspec.Struct, frozen=True, kw_only=True):
 
     @property
     def md_link(self):
-        hyperlink = self.description.lower().replace(' ', '-')
-
-        return f"[{self.description}](#{hyperlink})"
+        return get_markdown_hyperlink(self.description)
 
 
 class Paragraph(msgspec.Struct, frozen=True, kw_only=True):
@@ -56,9 +63,7 @@ class Paragraph(msgspec.Struct, frozen=True, kw_only=True):
 
     @property
     def md_link(self):
-        hyperlink = self.title.lower().replace(' ', '-')
-
-        return f"[{self.title}](#{hyperlink})"
+        return get_markdown_hyperlink(self.title)
 
 # endregion
 
@@ -264,12 +269,13 @@ def get_paragraphs( connection: sqlite3.Connection,
 
 # region Tags
 
-def add_tag(connection: sqlite3.Connection, name: str, description: str = None):
+def add_tag(connection: sqlite3.Connection, description: str, name: str = None):
     cursor = connection.cursor()
     
-    description = description.strip() if description else name
-
-    name = name.strip().lower().replace(' ', '-')
+    if not name:
+        name = get_markdown_hyperlink(description)
+    else:
+        name = get_markdown_hyperlink(name)
 
     if not name:
         raise ValueError("Tag name cannot be empty")
