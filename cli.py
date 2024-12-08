@@ -75,7 +75,7 @@ try:
 
         # Title
         while True:
-            title = prompt("Title: ")
+            title = prompt("Title: ").strip()
 
             if title:
                 break
@@ -172,13 +172,17 @@ try:
         typer.echo(f"Content:\n{paragraph.content}")
         typer.echo(f"Tags: {', '.join(tag.name for tag in paragraph.tags)}")
 
-
     @app.command()
-    def generate(collection_id: int):
+    def generate(collection_id: int, output: str = None):
         """Generate Markdown file."""
         markdown = generate_markdown(connection= conn, collection_id= collection_id)
 
-        typer.echo(markdown)
+        if output:
+            with open(output, 'w', encoding='utf8') as f:
+                f.write(markdown)
+            typer.echo(f"Markdown file saved to {output}")
+        else:
+            typer.echo(markdown)
 
     @app.command()
     def init():

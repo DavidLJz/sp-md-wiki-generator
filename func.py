@@ -263,6 +263,7 @@ def generate_markdown(connection: sqlite3.Connection, collection_id: int):
         "{% endfor %}\n\n"
         "# 2. Topics\n\n"
         "{% for paragraph in paragraphs %}\n"
+            "## {{ paragraph.title }}\n"
             "{{ paragraph.content }}\n\n"
             "**Tags**: {% for tag in paragraph.tags %}{{ tag.md_link }}{% if not loop.last %}, {% endif %}{% endfor %}\n"
         "{% endfor %}\n"
