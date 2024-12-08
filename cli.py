@@ -11,7 +11,8 @@ from func import (
     get_collections as db_get_collections,
     add_tag as db_add_tag,
     get_tags as db_get_tags,
-    add_paragraph as db_add_paragraph
+    add_paragraph as db_add_paragraph,
+    get_paragraphs as db_get_paragraphs
     )
 
 conn = get_connection()
@@ -132,10 +133,44 @@ try:
         typer.echo("Document added successfully")
 
 
-    @app.command()
-    def show_paragraph():
+    @app.command(help= (
+            "Show a paragraph. If an ID is not provided, "
+            "a list of paragraphs is shown, and the user can select one to show."
+            )
+        )
+    def show_paragraph(id: int = None):
         """Show a paragraph."""
-        pass
+        if id is None:
+            paragraphs = db_get_paragraphs(connection= conn)
+
+            paragraph_dict = {p.id: p for p in paragraphs}
+
+            for paragraph in paragraphs:
+                typer.echo(f"{paragraph.id}. {paragraph.title}")
+
+            paragraph_id = typer.prompt("Enter the paragraph ID", type= int)
+
+            if not paragraph_id or paragraph_id not in paragraph_dict:
+                typer.echo("Invalid paragraph ID")
+                raise typer.Abort()
+            
+            paragraph = paragraph_dict[ paragraph_id ]
+
+        else:
+            paragraphs = db_get_paragraphs(connection= conn, paragraph_id= id)
+
+            if not paragraphs:
+                typer.echo("Paragraph not found")
+                raise typer.Abort()
+
+            paragraph = paragraphs[0]
+
+
+        typer.echo("Collection: " + paragraph.collection.name)
+        typer.echo(f"ID: {paragraph.id}")
+        typer.echo(f"Title: {paragraph.title}")
+        typer.echo(f"Content:\n{paragraph.content}")
+        typer.echo(f"Tags: {', '.join(tag.name for tag in paragraph.tags)}")
 
 
     @app.command()

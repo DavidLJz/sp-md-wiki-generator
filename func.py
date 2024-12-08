@@ -27,6 +27,18 @@ class Tag(msgspec.Struct, frozen=True, kw_only=True):
     deleted_at: datetime|None = None
 
 
+class Paragraph(msgspec.Struct, frozen=True, kw_only=True):
+    id: int
+    title: str
+    content: str
+
+    collection: Collection|None = None
+    tags: frozenset[Tag] = frozenset()
+
+    created_at: datetime|None = None
+    updated_at: datetime|None = None
+    deleted_at: datetime|None = None
+
 # endregion
 
 # region DB functions
@@ -111,6 +123,57 @@ def add_paragraph(connection: sqlite3.Connection,
     connection.commit()
 
     return paragraph_id
+
+
+def get_paragraphs(connection: sqlite3.Connection,
+                   paragraph_id: int = None,
+                   ) -> List[Paragraph]:
+    cursor = connection.cursor()
+
+    sql = (
+        'SELECT *'
+        'FROM paragraphs '
+        'WHERE deleted_at IS NULL'
+    )
+
+    values = []
+
+    if paragraph_id:
+        sql += ' AND id = ?'
+        values.append(paragraph_id)
+
+    rows = cursor.execute(sql, values).fetchall()
+
+    paragraphs = []
+
+    for row in rows:
+        # Fetch collection
+        collection = cursor.execute("""
+            SELECT * FROM collections
+            WHERE id = ?
+        """, (row['collection_id'],)).fetchone()
+
+        # Fetch tags
+        tags = cursor.execute("""
+            SELECT t.* FROM tags t
+            JOIN paragraph_tags pt ON t.id = pt.tag_id
+            WHERE pt.paragraph_id = ?
+        """, (row['id'],)).fetchall()
+
+        paragraph = Paragraph(
+            id= row['id'],
+            title= row['title'],
+            content= row['content'],
+            created_at= row['created_at'],
+            updated_at= row['updated_at'],
+            deleted_at= row['deleted_at'],
+            collection= dict_to_struct(dict(collection), Collection) if collection else None,
+            tags= frozenset(dict_to_struct(dict(tag), Tag) for tag in tags)
+        )
+
+        paragraphs.append(paragraph)
+
+    return paragraphs
 
 # endregion
 
