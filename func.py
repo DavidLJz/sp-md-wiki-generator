@@ -2,12 +2,21 @@ import sqlite3
 from datetime import datetime
 from jinja2 import Template
 from typing import List
+from enum import StrEnum
 import msgspec
+from os import environ, path
+import tempfile
+import subprocess
 
 # region Dataclass
 
 def dict_to_struct(data: dict, struct_type: type) -> msgspec.Struct:
     return struct_type(**data)
+
+
+class TextEditor(StrEnum):
+    NANO = "nano"
+    VIM = "vim"
 
 
 class Collection(msgspec.Struct, frozen=True, kw_only=True):
@@ -135,6 +144,53 @@ def add_paragraph(connection: sqlite3.Connection,
     connection.commit()
 
     return paragraph_id
+
+
+def update_paragraph(connection: sqlite3.Connection,
+                    paragraph_id: int,
+                    title: str = None,
+                    content: str = None,
+                    tag_ids: List[int] = None
+                    ):
+    cursor = connection.cursor()
+
+    # Update the paragraph
+
+    values = {}
+
+    sql = "UPDATE paragraphs SET %s WHERE id = ?"   
+
+    if title:
+        values['title'] = title
+
+    if content:
+        values['content'] = content
+
+    if not values:
+        raise ValueError("No values to update")
+    
+    sql = sql % ', '.join(f"{key} = ?" for key in values)
+
+    values = list(values.values())
+
+    values.append(paragraph_id)
+
+    cursor.execute(sql, values)
+
+    # Update tags
+    # Remove all tags
+    cursor.execute("""
+        DELETE FROM paragraph_tags WHERE paragraph_id = ?
+    """, (paragraph_id,))
+
+    # Add tags to paragraph
+    for tag_id in set(tag_ids):
+        cursor.execute("""
+            INSERT INTO paragraph_tags (paragraph_id, tag_id)
+            VALUES (?, ?)
+        """, (paragraph_id, tag_id))
+
+    connection.commit()
 
 
 def get_paragraphs( connection: sqlite3.Connection,
@@ -274,3 +330,27 @@ def generate_markdown(connection: sqlite3.Connection, collection_id: int):
     markdown = template.render(paragraphs=paragraphs, tags=tags)
 
     return markdown
+
+
+# region Misc
+
+def open_content_text_editor(content: str = "", editor: TextEditor = TextEditor.NANO) -> str:
+    with tempfile.NamedTemporaryFile(mode='w+', encoding='utf8', delete=False) as t:
+
+        if content:
+            t.write(content)
+            t.flush()
+
+        try:
+            code = subprocess.call([editor.value, t.name])
+        except FileNotFoundError:
+            raise FileNotFoundError(f"Editor '{editor.value}' not found. Please ensure it is installed and in your PATH.")
+
+        if code != 0:
+            raise ValueError("Error opening text editor")
+        
+        t.seek(0)
+
+        edited_content = t.read()
+
+        return edited_content

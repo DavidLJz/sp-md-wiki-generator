@@ -12,7 +12,9 @@ from func import (
     add_tag as db_add_tag,
     get_tags as db_get_tags,
     add_paragraph as db_add_paragraph,
-    get_paragraphs as db_get_paragraphs
+    get_paragraphs as db_get_paragraphs,
+    update_paragraph as db_update_paragraph,
+    open_content_text_editor
     )
 
 conn = get_connection()
@@ -171,6 +173,66 @@ try:
         typer.echo(f"Title: {paragraph.title}")
         typer.echo(f"Content:\n{paragraph.content}")
         typer.echo(f"Tags: {', '.join(tag.name for tag in paragraph.tags)}")
+
+
+    @app.command()
+    def modify_paragraph(id: int):
+        """Modify a paragraph."""
+        paragraphs = db_get_paragraphs(connection= conn, paragraph_id= id)
+
+        if not paragraphs:
+            typer.echo("Paragraph not found")
+            raise typer.Abort()
+
+        paragraph = paragraphs[0]
+
+        typer.echo("Leave the field empty to keep the current value.")
+
+        title = prompt("Title: ", default= paragraph.title).strip()
+        
+        content = open_content_text_editor(content= paragraph.content)
+
+        tags = db_get_tags(connection= conn)
+
+        tags_dict = {tag.name: tag for tag in tags}
+
+        tag_completer = WordCompleter(tags_dict.keys(), ignore_case= True)
+
+        tag_list = []
+
+        typer.echo("Enter tags from the list. Press Enter without typing anything to finish.")
+
+        while True:
+            tag_name = prompt("Tag: ", completer= tag_completer)
+
+            if not tag_name:
+                break
+
+            if tag_name not in tags_dict:
+                typer.echo("Tag not found")
+                continue
+
+            tag_list.append(tag_name.strip())
+
+        tag_ids = set()
+        new_tags = set()
+
+        for tag in tag_list:
+            if tag not in tags_dict:
+                continue
+
+            tag_ids.add(tags_dict[tag].id)
+
+        db_update_paragraph(
+            connection= conn,
+            paragraph_id= paragraph.id,
+            title= title,
+            content= content,
+            tag_ids= tag_ids
+            )
+
+        typer.echo("Document modified successfully")
+
 
     @app.command()
     def generate(collection_id: int, output: str = None):
