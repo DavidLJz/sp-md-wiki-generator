@@ -15,7 +15,8 @@ from func import (
     get_paragraphs as db_get_paragraphs,
     update_paragraph as db_update_paragraph,
     delete_paragraph as db_delete_paragraph,
-    open_content_text_editor
+    open_content_text_editor,
+    TextEditor
     )
 
 conn = get_connection()
@@ -54,7 +55,7 @@ try:
 
 
     @app.command()
-    def add_paragraph():
+    def add_paragraph(text_editor: TextEditor = TextEditor.NANO):
         """Add a new paragraph."""
         typer.echo("Registering a new document...")
 
@@ -85,19 +86,18 @@ try:
 
             typer.echo("Title cannot be empty")
 
+        user_instruction = (
+            'You are about to modify the content of the document in a text editor.\n'
+            'Please SAVE and CLOSE the editor to proceed.\n'
+            'Warning: If you do not save the file, the content will not be updated and '
+            'the content cannot be empty.\n'
+            'Press Enter to continue.'
+        )
+
+        input(user_instruction)
+
         # Multi-line input for document content
-        typer.echo("Enter the document content. Press Ctrl+D (Unix) or Ctrl+Z (Windows) to finish:")
-
-        content_lines = []
-
-        try:
-            while True:
-                line = input()
-                content_lines.append(line)
-        except EOFError:
-            pass
-
-        content = "\n".join(content_lines).strip()
+        content = open_content_text_editor(content= '', editor= text_editor).strip()
 
         if not content:
             typer.echo("Content cannot be empty")
@@ -177,7 +177,7 @@ try:
 
 
     @app.command()
-    def modify_paragraph(id: int):
+    def modify_paragraph(id: int, text_editor: TextEditor = TextEditor.NANO):
         """Modify a paragraph."""
         paragraphs = db_get_paragraphs(connection= conn, paragraph_id= id)
 
@@ -190,8 +190,23 @@ try:
         typer.echo("Leave the field empty to keep the current value.")
 
         title = prompt("Title: ", default= paragraph.title).strip()
+
+        user_instruction = (
+            'You are about to modify the content of the document in a text editor.\n'
+            'Please SAVE and CLOSE the editor to proceed.\n'
+            'Warning: If you do not save the file, the content will not be updated and '
+            'the content cannot be empty.\n'
+            'Press Enter to continue.'
+        )
+
+        input(user_instruction)
+
+        content = open_content_text_editor(
+            content= paragraph.content, editor= text_editor).strip()
         
-        content = open_content_text_editor(content= paragraph.content)
+        if not content:
+            typer.echo("Content cannot be empty")
+            raise typer.Abort()
 
         tags = db_get_tags(connection= conn)
 

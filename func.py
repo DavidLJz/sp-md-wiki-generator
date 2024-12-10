@@ -26,6 +26,7 @@ def dict_to_struct(data: dict, struct_type: type) -> msgspec.Struct:
 class TextEditor(StrEnum):
     NANO = "nano"
     VIM = "vim"
+    NOTEPAD = "notepad"
 
 
 class Collection(msgspec.Struct, frozen=True, kw_only=True):
