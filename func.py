@@ -9,12 +9,17 @@ import tempfile
 import subprocess
 
 # region Dataclass
-
-def get_markdown_hyperlink(text: str) -> str:
-    hyperlink = text.strip().lower().replace(' ', '-')
+def _get_markdown_safe_text(s: str) -> str:
+    s = s.strip().lower().replace(' ', '-')
 
     # Allow only markdown characters in hyperlink
-    hyperlink = ''.join(c for c in hyperlink if c.isalnum() or c in ['-', '_'])
+    s = ''.join(c for c in s if c.isalnum() or c in ['-', '_'])
+
+    return s
+
+
+def get_markdown_hyperlink(text: str) -> str:
+    hyperlink = _get_markdown_safe_text(text)
 
     return f"[{text}](#{hyperlink})"
 
@@ -274,16 +279,16 @@ def add_tag(connection: sqlite3.Connection, description: str, name: str = None):
     cursor = connection.cursor()
     
     if not name:
-        name = get_markdown_hyperlink(description)
+        name = _get_markdown_safe_text(description)
     else:
-        name = get_markdown_hyperlink(name)
+        name = _get_markdown_safe_text(name)
 
     if not name:
         raise ValueError("Tag name cannot be empty")
 
-    # Insert the tag
+    # Insert the tag if it doesn't exist
     cursor.execute("""
-        INSERT INTO tags (name, description)
+        INSERT OR IGNORE INTO tags (name, description)
         VALUES (?, ?)
     """, (name, description))
 

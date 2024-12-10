@@ -40,9 +40,11 @@ try:
         
 
     @app.command()
-    def add_tag(name: str, description: str = None):
+    def add_tag(description: str, name: str|None = None):
         """Add a new tag."""
         db_add_tag(connection= conn, name= name, description= description)
+
+        typer.echo("Tag added successfully")
 
 
     @app.command()
