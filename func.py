@@ -275,7 +275,7 @@ def get_paragraphs( connection: sqlite3.Connection,
 
 # region Tags
 
-def add_tag(connection: sqlite3.Connection, description: str, name: str = None):
+def add_tag(connection: sqlite3.Connection, description: str, name: str = None, paragraph_id: int = None):
     cursor = connection.cursor()
     
     if not name:
@@ -291,6 +291,12 @@ def add_tag(connection: sqlite3.Connection, description: str, name: str = None):
         INSERT OR IGNORE INTO tags (name, description)
         VALUES (?, ?)
     """, (name, description))
+
+    if paragraph_id:
+        cursor.execute("""
+            INSERT INTO paragraph_tags (paragraph_id, tag_id)
+            VALUES (?, (SELECT id FROM tags WHERE name = ?))
+        """, (paragraph_id, name))
 
     connection.commit()
 

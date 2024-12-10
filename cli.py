@@ -278,6 +278,27 @@ try:
 
 
     @app.command()
+    def add_tag(paragraph_id: int, tag_description: str, tag_name: str = None):
+        """Add a tag to a paragraph."""
+        paragraphs = db_get_paragraphs(connection= conn, paragraph_id= paragraph_id)
+
+        if not paragraphs:
+            typer.echo("Paragraph not found")
+            raise typer.Abort()
+
+        paragraph = paragraphs[0]
+
+        db_add_tag(
+            connection= conn,
+            name= tag_name,
+            description= tag_description,
+            paragraph_id= paragraph.id
+            )
+
+        typer.echo("Tag added successfully")
+
+
+    @app.command()
     def generate(collection_id: int, output: str = None):
         """Generate Markdown file."""
         markdown = generate_markdown(connection= conn, collection_id= collection_id)
