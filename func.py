@@ -335,7 +335,7 @@ def generate_markdown(connection: sqlite3.Connection, collection_id: int):
             "- {{ paragraph.md_link }}\n"
             "{% endfor %}\n"
         "{% endfor %}\n\n"
-        "# 2. Topics\n\n"
+        "# 2. Excerpts\n\n"
         "{% for paragraph in paragraphs %}\n"
             "## {{ paragraph.title }}\n"
             "{{ paragraph.content }}\n\n"
