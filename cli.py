@@ -16,8 +16,76 @@ from func import (
     update_paragraph as db_update_paragraph,
     delete_paragraph as db_delete_paragraph,
     open_content_text_editor,
-    TextEditor
+    TextEditor,
+    Paragraph
     )
+
+
+def _modify_paragraph_menu(paragraph: Paragraph, text_editor: TextEditor):
+    typer.echo("Leave the field empty to keep the current value.")
+
+    title = prompt("Title: ", default= paragraph.title).strip()
+
+    user_instruction = (
+        'You are about to modify the content of the document in a text editor.\n'
+        'Please SAVE and CLOSE the editor to proceed.\n'
+        'Warning: If you do not save the file, the content will not be updated and '
+        'the content cannot be empty.\n'
+        'Press Enter to continue.'
+    )
+
+    input(user_instruction)
+
+    content = open_content_text_editor(
+        content= paragraph.content, editor= text_editor).strip()
+
+    # Clear screen
+    typer.echo("\033c")
+    
+    if not content:
+        typer.echo("Content cannot be empty")
+        raise typer.Abort()
+
+    tags = db_get_tags(connection= conn)
+
+    tags_dict = {tag.name: tag for tag in tags}
+
+    tag_completer = WordCompleter(tags_dict.keys(), ignore_case= True)
+
+    tag_list = []
+
+    typer.echo("Enter tags from the list. Press Enter without typing anything to finish.")
+
+    while True:
+        tag_name = prompt("Tag: ", completer= tag_completer)
+
+        if not tag_name:
+            break
+
+        if tag_name not in tags_dict:
+            typer.echo("Tag not found")
+            continue
+
+        tag_list.append(tag_name.strip())
+
+    tag_ids = set()
+    new_tags = set()
+
+    for tag in tag_list:
+        if tag not in tags_dict:
+            continue
+
+        tag_ids.add(tags_dict[tag].id)
+
+    db_update_paragraph(
+        connection= conn,
+        paragraph_id= paragraph.id,
+        title= title,
+        content= content,
+        tag_ids= tag_ids
+        )
+
+    typer.echo("Document modified successfully")
 
 conn = get_connection()
 
@@ -153,7 +221,7 @@ try:
             )
         )
     def show_paragraph(id: int = None):
-        """Show a paragraph."""
+        """Show a paragraph, with an option to modify it."""
         if id is None:
             paragraphs = db_get_paragraphs(connection= conn)
 
@@ -179,12 +247,42 @@ try:
 
             paragraph = paragraphs[0]
 
+        # Clear screen
+        typer.echo("\033c")
 
         typer.echo("Collection: " + paragraph.collection.name)
         typer.echo(f"ID: {paragraph.id}")
         typer.echo(f"Title: {paragraph.title}")
         typer.echo(f"Content:\n{paragraph.content}")
         typer.echo(f"Tags: {', '.join(tag.name for tag in paragraph.tags)}")
+
+        typer.echo("\n\n")
+
+        while True:
+            user_input = typer.prompt("Do you want to modify this excerpt? (y/n)", type= str).strip().lower()
+
+            if user_input not in ('y', 'n'):
+                continue
+
+            break
+
+        if user_input == 'n':
+            return
+        
+        text_editors = [editor.name for editor in TextEditor]
+
+        text_editor_completer = WordCompleter(text_editors, ignore_case= True)
+
+        text_editor = prompt(
+            "Select a text editor. Leave empty to use the default editor (nano): ", 
+            completer= text_editor_completer, 
+            default= TextEditor.NANO.name)
+
+        if text_editor not in text_editors:
+            typer.echo("Invalid text editor")
+            raise typer.Abort()
+        
+        _modify_paragraph_menu(paragraph, TextEditor[text_editor])
 
 
     @app.command()
@@ -198,67 +296,7 @@ try:
 
         paragraph = paragraphs[0]
 
-        typer.echo("Leave the field empty to keep the current value.")
-
-        title = prompt("Title: ", default= paragraph.title).strip()
-
-        user_instruction = (
-            'You are about to modify the content of the document in a text editor.\n'
-            'Please SAVE and CLOSE the editor to proceed.\n'
-            'Warning: If you do not save the file, the content will not be updated and '
-            'the content cannot be empty.\n'
-            'Press Enter to continue.'
-        )
-
-        input(user_instruction)
-
-        content = open_content_text_editor(
-            content= paragraph.content, editor= text_editor).strip()
-        
-        if not content:
-            typer.echo("Content cannot be empty")
-            raise typer.Abort()
-
-        tags = db_get_tags(connection= conn)
-
-        tags_dict = {tag.name: tag for tag in tags}
-
-        tag_completer = WordCompleter(tags_dict.keys(), ignore_case= True)
-
-        tag_list = []
-
-        typer.echo("Enter tags from the list. Press Enter without typing anything to finish.")
-
-        while True:
-            tag_name = prompt("Tag: ", completer= tag_completer)
-
-            if not tag_name:
-                break
-
-            if tag_name not in tags_dict:
-                typer.echo("Tag not found")
-                continue
-
-            tag_list.append(tag_name.strip())
-
-        tag_ids = set()
-        new_tags = set()
-
-        for tag in tag_list:
-            if tag not in tags_dict:
-                continue
-
-            tag_ids.add(tags_dict[tag].id)
-
-        db_update_paragraph(
-            connection= conn,
-            paragraph_id= paragraph.id,
-            title= title,
-            content= content,
-            tag_ids= tag_ids
-            )
-
-        typer.echo("Document modified successfully")
+        _modify_paragraph_menu(paragraph, text_editor)
 
 
     @app.command()
