@@ -55,27 +55,36 @@ try:
 
 
     @app.command()
-    def add_paragraph(text_editor: TextEditor = TextEditor.NANO):
+    def add_paragraph(text_editor: TextEditor = TextEditor.NANO, collection_id: int = None):
         """Add a new paragraph."""
         typer.echo("Registering a new document...")
 
         collections = db_get_collections(connection= conn)
+        
         tags = db_get_tags(connection= conn)
-
-        collections_dict = {c.name: c for c in collections}
         tags_dict = {t.name: t for t in tags}
-
-        collection_completer = WordCompleter(collections_dict.keys(), ignore_case= True)
         tag_completer = WordCompleter(tags_dict.keys(), ignore_case= True)
 
-        # Collection selection
-        collection_name = prompt("Collection: ", completer= collection_completer)
+        if not collection_id:
+            collections_dict = {c.name: c for c in collections}
 
-        if not collection_name in collections_dict:
-            typer.echo("Invalid collection")
-            raise typer.Abort()
-        
-        collection_id = collections_dict[collection_name].id
+            collection_completer = WordCompleter(collections_dict.keys(), ignore_case= True)
+
+            # Collection selection
+            collection_name = prompt("Collection: ", completer= collection_completer)
+
+            if not collection_name in collections_dict:
+                typer.echo("Invalid collection")
+                raise typer.Abort()
+            
+            collection_id = collections_dict[collection_name].id
+
+        else:
+            collection = next((c for c in collections if c.id == collection_id), None)
+
+            if not collection:
+                typer.echo("Collection not found")
+                raise typer.Abort()
 
         # Title
         while True:
