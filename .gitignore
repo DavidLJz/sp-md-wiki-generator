@@ -5,6 +5,8 @@ __pycache__/
 
 *.db*
 *.md*
+!README.md
+!LICENSE.md
 
 # C extensions
 *.so
