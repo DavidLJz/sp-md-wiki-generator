@@ -35,6 +35,8 @@ As of now, the project is in its early stages and only supports basic functional
 - All the information is stored in a local SQLite database.
 
 ## Installation
+This project was made with Python 3.12 in mind. It is recommended to use a virtual environment to manage the dependencies.
+
 1. Clone the repository:
     ```sh
     git clone <repository-url>

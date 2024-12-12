@@ -1,0 +1,4 @@
+typer==0.15.1
+prompt_toolkit==3.0.48
+Jinja2==3.1.4
+msgspec==0.18.6
