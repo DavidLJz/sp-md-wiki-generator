@@ -3,7 +3,7 @@ import typer
 from prompt_toolkit import prompt
 from prompt_toolkit.completion import WordCompleter
 
-from func import (
+from app.func import (
     generate_markdown, 
     initialize_database, 
     get_connection,

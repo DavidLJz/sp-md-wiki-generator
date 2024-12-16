@@ -1,77 +1,11 @@
 import sqlite3
-from datetime import datetime
 from jinja2 import Template
 from typing import List
-from enum import StrEnum
-import msgspec
 from os import environ, path
 import tempfile
 import subprocess
 
-# region Dataclass
-def _get_markdown_safe_text(s: str) -> str:
-    s = s.strip().lower().replace(' ', '-')
-
-    # Allow only markdown characters in hyperlink
-    s = ''.join(c for c in s if c.isalnum() or c in ['-', '_'])
-
-    return s
-
-
-def get_markdown_hyperlink(text: str) -> str:
-    hyperlink = _get_markdown_safe_text(text)
-
-    return f"[{text}](#{hyperlink})"
-
-
-def dict_to_struct(data: dict, struct_type: type) -> msgspec.Struct:
-    return struct_type(**data)
-
-
-class TextEditor(StrEnum):
-    NANO = "nano"
-    VIM = "vim"
-    NOTEPAD = "notepad"
-
-
-class Collection(msgspec.Struct, frozen=True, kw_only=True):
-    id: int
-    name: str
-    created_at: datetime|None = None
-    updated_at: datetime|None = None
-    deleted_at: datetime|None = None
-
-
-class Tag(msgspec.Struct, frozen=True, kw_only=True):
-    id: int
-    name: str
-    description: str|None = None
-    created_at: datetime|None = None
-    updated_at: datetime|None = None
-    deleted_at: datetime|None = None
-
-    @property
-    def md_link(self):
-        return get_markdown_hyperlink(self.description)
-
-
-class Paragraph(msgspec.Struct, frozen=True, kw_only=True):
-    id: int
-    title: str
-    content: str
-
-    collection: Collection|None = None
-    tags: frozenset[Tag] = frozenset()
-
-    created_at: datetime|None = None
-    updated_at: datetime|None = None
-    deleted_at: datetime|None = None
-
-    @property
-    def md_link(self):
-        return get_markdown_hyperlink(self.title)
-
-# endregion
+from app.models import Collection, Paragraph, Tag, TextEditor, get_markdown_safe_text, dict_to_struct
 
 # region DB functions
 
@@ -279,9 +213,9 @@ def add_tag(connection: sqlite3.Connection, description: str, name: str = None, 
     cursor = connection.cursor()
     
     if not name:
-        name = _get_markdown_safe_text(description)
+        name = get_markdown_safe_text(description)
     else:
-        name = _get_markdown_safe_text(name)
+        name = get_markdown_safe_text(name)
 
     if not name:
         raise ValueError("Tag name cannot be empty")
@@ -299,6 +233,8 @@ def add_tag(connection: sqlite3.Connection, description: str, name: str = None, 
         """, (paragraph_id, name))
 
     connection.commit()
+
+    return Tag(id=cursor.lastrowid, name=name, description=description)
 
 
 def get_tags(connection: sqlite3.Connection) -> List[Tag]:
