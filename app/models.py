@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, FrozenSet
+from typing import Optional, List
 from enum import StrEnum
 from datetime import datetime
 
@@ -59,7 +59,7 @@ class Paragraph(BaseModel):
     title: str
     content: str
     collection: Optional[Collection] = None
-    tags: FrozenSet[Tag] = Field(default_factory=frozenset)
+    tags: List[Tag] = Field(default_factory= [])
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     deleted_at: Optional[datetime] = None

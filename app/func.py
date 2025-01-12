@@ -198,7 +198,7 @@ def get_paragraphs( connection: sqlite3.Connection,
             updated_at= row['updated_at'],
             deleted_at= row['deleted_at'],
             collection= dict_to_struct(dict(collection), Collection) if collection else None,
-            tags= frozenset(dict_to_struct(dict(tag), Tag) for tag in tags)
+            tags= list(dict_to_struct(dict(tag), Tag) for tag in tags)
         )
 
         paragraphs.append(paragraph)
@@ -272,7 +272,7 @@ def get_collections(connection: sqlite3.Connection) -> List[Collection]:
 def generate_markdown(connection: sqlite3.Connection, collection_id: int):
     paragraphs = get_paragraphs(connection, collection_id= collection_id)
 
-    tags = set(t for p in paragraphs for t in p.tags)
+    tags = list(t for p in paragraphs for t in p.tags)
 
     # Topics Index
     markdown_template = (
